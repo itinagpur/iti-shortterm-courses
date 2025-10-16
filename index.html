@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Govt ITI Nagpur - Short Term Courses</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/papaparse@5.3.0/papaparse.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios@1.4.0/dist/axios.min.js"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #e0f7fa, #bbdefb);
+            margin: 0;
+            padding: 20px;
+            color: #333;
+        }
+        header {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        h1 {
+            margin: 0;
+            color: #1565c0;
+        }
+        nav {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        nav button {
+            background: #1976d2;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        nav button:hover {
+            background: #0d47a1;
+        }
+        .card {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+        }
+        .attendance-badge {
+            display: inline-block;
+            padding: 5px 10px;
+            border-radius: 20px;
+            font-size: 14px;
+            margin: 5px;
+        }
+        .present {
+            background: #4caf50;
+            color: white;
+        }
+        .absent {
+            background: #f44336;
+            color: white;
+        }
+        footer {
+            text-align: center;
+            margin-top: 40px;
+            color: #666;
+            font-size: 14px;
+        }
+        select, input {
+            padding: 10px;
+            border-radius: 8px;
+            border: 1px solid #ccc;
+            margin: 5px;
+        }
+        button {
+            padding: 10px 15px;
+            border-radius: 8px;
+            border: none;
+            background: #1976d2;
+            color: white;
+            cursor: pointer;
+        }
+        button:hover {
+            background: #0d47a1;
+        }
+        .admin-section {
+            background: #ffecb3;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Govt ITI Nagpur - Short Term Courses</h1>
+        <div>
+            <input type="password" id="adminPassword" placeholder="Admin Password">
+            <button onclick="toggleAdmin()">Admin Login</button>
+        </div>
+    </header>
+
+    <nav>
+        <button onclick="showTab('dashboard')">Dashboard</button>
+        <button onclick="showTab('timetable')">Timetable</button>
+        <button onclick="showTab('attendance')">Attendance</button>
+        <button onclick="showTab('lessonplan')">Lesson Plan</button>
+        <button onclick="showTab('reports')">Reports</button>
+    </nav>
+
+    <div id="dashboard" class="tab-content">
+        <div class="grid">
+            <div class="card">
+                <h2>Today's Attendance Overview</h2>
+                <p id="overallAttendance">Loading...</p>
+            </div>
+            <div class="card">
+                <h2>Course-wise Attendance</h2>
+                <canvas id="attendanceChart" width="400" height="200"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <div id="timetable" class="tab-content" style="display:none">
+        <div class="card">
+            <h2>Course Timetable</h2>
+            <select id="courseSelectTimetable" onchange="loadTimetable()">
+                <option value="">Select Course</option>
+            </select>
+            <div id="timetableDisplay"></div>
+        </div>
+    </div>
+
+    <div id="attendance" class="tab-content" style="display:none">
+        <div class="card">
+            <h2>Mark Attendance</h2>
+            <div id="adminSection" class="admin-section" style="display:none">
+                <select id="courseSelectAttendance" onchange="loadStudents()">
+                    <option value="">Select Course</option>
+                </select>
+                <input type="date" id="attendanceDate">
+                <div id="studentList"></div>
+            </div>
+            <p id="adminNote">Admin login required to mark attendance.</p>
+        </div>
+    </div>
+
+    <div id="lessonplan" class="tab-content" style="display:none">
+        <div class="card">
+            <h2>Course Lesson Plans</h2>
+            <select id="courseSelectLesson" onchange="loadLessonPlan()">
+                <option value="">Select Course</option>
+            </select>
+            <div id="lessonPlanDisplay"></div>
+        </div>
+    </div>
+
+    <div id="reports" class="tab-content" style="display:none">
+        <div class="card">
+            <h2>Generate Reports</h2>
+            <div id="adminSectionReports" class="admin-section" style="display:none">
+                <select id="reportCourseSelect">
+                    <option value="">All Courses</option>
+                </select>
+                <button onclick="generateReport('csv')">Download CSV</button>
+                <button onclick="generateReport('pdf')">Download PDF</button>
+            </div>
+            <p id="reportNote">Admin login required to generate reports.</p>
+        </div>
+    </div>
+
+    <footer>
+        Developed by Grok (xAI Assistant) for Govt. ITI Nagpur – 2024
+    </footer>
+
+    <script>
+        const API_URL = 'https://script.google.com/macros/s/AKfycbwOHlGXGHf3P5jP8Kj9ts1PZ_dixqaJdW-R-T9-hwE6svhENlH8S5rAdAiklJF51ATl/exec'; // Replace with your URL from Step 2
+        let isAdmin = false;
+        let courses = [];
+        let students = [];
+        let attendance = [];
+        let timetable = [];
+        let lessonPlan = [];
+
+        // Load data on page load
+        window.onload = function() {
+            loadData();
+            setInterval(loadData, 300000); // Refresh every 5 minutes
+        };
+
+        function loadData() {
+            Promise.all([
+                fetchData('Courses!A:H'),
+                fetchData('Students!A:F'),
+                fetchData('Attendance!A:E'),
+                fetchData('Timetable!A:D'),
+                fetchData('LessonPlan!A:D')
+            ]).then(([coursesData, studentsData, attendanceData, timetableData, lessonPlanData]) => {
+                courses = coursesData.slice(1);
+                students = studentsData.slice(1);
+                attendance = attendanceData.slice(1);
+                timetable = timetableData.slice(1);
+                lessonPlan = lessonPlanData.slice(1);
+                updateDashboard();
+                populateCourseDropdowns();
+            }).catch(error => {
+                console.error('Error loading data:', error);
+            });
+        }
+
+        function fetchData(range) {
+            return axios.get(`${API_URL}?action=getData&range=${range}`)
+                .then(response => response.data)
+                .catch(error => {
+                    console.error('API Error:', error);
+                    return [];
+                });
+        }
+
+        function showTab(tabName) {
+            document.querySelectorAll('.tab-content').forEach(tab => {
+                tab.style.display = 'none';
+            });
+            document.getElementById(tabName).style.display = 'block';
+        }
+
+        function toggleAdmin() {
+            const password = document.getElementById('adminPassword').value;
+            if (password === 'admin123') { // Change this password!
+                isAdmin = !isAdmin;
+                document.getElementById('adminSection').style.display = isAdmin ? 'block' : 'none';
+                document.getElementById('adminNote').style.display = isAdmin ? 'none' : 'block';
+                document.getElementById('adminSectionReports').style.display = isAdmin ? 'block' : 'none';
+                document.getElementById('reportNote').style.display = isAdmin ? 'none' : 'block';
+                alert(isAdmin ? 'Admin mode enabled' : 'Admin mode disabled');
+            } else {
+                alert('Incorrect password');
+            }
+        }
+
+        function updateDashboard() {
+            const today = new Date().toISOString().split('T')[0];
+            const todayAttendance = attendance.filter(record => record[0] === today);
+            const presentCount = todayAttendance.filter(record => record[3] === 'Yes').length;
+            const totalStudents = students.length;
+            const percentage = totalStudents > 0 ? ((presentCount / totalStudents) * 100).toFixed(1) : 0;
+
+            document.getElementById('overallAttendance').innerHTML = `
+                <strong>${percentage}%</strong> present today<br>
+                ${presentCount} out of ${totalStudents} students
+            `;
+
+            // Update chart
+            const courseData = courses.map(course => {
+                const courseStudents = students.filter(student => student[1] === course[0]).length;
+                const coursePresent = todayAttendance.filter(record => record[1] === course[0] && record[3] === 'Yes').length;
+                return {
+                    label: course[1],
+                    percentage: courseStudents > 0 ? ((coursePresent / courseStudents) * 100).toFixed(1) : 0
+                };
+            });
+
+            const ctx = document.getElementById('attendanceChart').getContext('2d');
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: courseData.map(c => c.label),
+                    datasets: [{
+                        label: 'Attendance Percentage',
+                        data: courseData.map(c => c.percentage),
+                        backgroundColor: 'rgba(54, 162, 235, 0.6)'
+                    }]
+                },
+                options: {
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: 100
+                        }
+                    }
+                }
+            });
+        }
+
+        function populateCourseDropdowns() {
+            const dropdowns = [
+                'courseSelectTimetable',
+                'courseSelectAttendance',
+                'courseSelectLesson',
+                'reportCourseSelect'
+            ];
+
+            dropdowns.forEach(dropdownId => {
+                const dropdown = document.getElementById(dropdownId);
+                dropdown.innerHTML = '<option value="">Select Course</option>';
+                courses.forEach(course => {
+                    const option = document.createElement('option');
+                    option.value = course[0];
+                    option.textContent = course[1];
+                    dropdown.appendChild(option);
+                });
+            });
+        }
+
+        function loadTimetable() {
+            const courseId = document.getElementById('courseSelectTimetable').value;
+            const courseTimetable = timetable.filter(record => record[0] === courseId);
+            let html = '<h3>Weekly Schedule</h3><ul>';
+            courseTimetable.forEach(record => {
+                html += `<li><strong>${record[1]}</strong>: ${record[2]} - ${record[3]}</li>`;
+            });
+            html += '</ul>';
+            document.getElementById('timetableDisplay').innerHTML = html;
+        }
+
+        function loadStudents() {
+            const courseId = document.getElementById('courseSelectAttendance').value;
+            const courseStudents = students.filter(student => student[1] === courseId);
+            let html = '<h3>Mark Attendance</h3>';
+            courseStudents.forEach(student => {
+                html += `
+                    <div>
+                        <input type="checkbox" id="student-${student[0]}" checked>
+                        <label for="student-${student[0]}">${student[2]}</label>
+                    </div>
+                `;
+            });
+            html += '<button onclick="saveAttendance()">Save Attendance</button>';
+            document.getElementById('studentList').innerHTML = html;
+        }
+
+        function saveAttendance() {
+            if (!isAdmin) return alert('Admin access required');
+            const courseId = document.getElementById('courseSelectAttendance').value;
+            const date = document.getElementById('attendanceDate').value || new Date().toISOString().split('T')[0];
+            const courseStudents = students.filter(student => student[1] === courseId);
+
+            courseStudents.forEach(student => {
+                const isPresent = document.getElementById(`student-${student[0]}`).checked;
+                const attendanceRecord = [date, courseId, student[0], isPresent ? 'Yes' : 'No', ''];
+                
+                axios.get(`${API_URL}?action=updateAttendance&data=${JSON.stringify(attendanceRecord)}`)
+                    .then(response => {
+                        console.log('Attendance saved:', response.data);
+                    })
+                    .catch(error => {
+                        console.error('Error saving attendance:', error);
+                    });
+            });
+
+            alert('Attendance saved successfully');
+            loadData();
+        }
+
+        function loadLessonPlan() {
+            const courseId = document.getElementById('courseSelectLesson').value;
+            const courseLessonPlan = lessonPlan.filter(record => record[0] === courseId);
+            let html = '<h3>Lesson Plan</h3><ul>';
+            courseLessonPlan.forEach(record => {
+                html += `<li><strong>Week ${record[1]}</strong>: ${record[2]} (Resources: ${record[3]})</li>`;
+            });
+            html += '</ul>';
+            document.getElementById('lessonPlanDisplay').innerHTML = html;
+        }
+
+        function generateReport(type) {
+            if (!isAdmin) return alert('Admin access required');
+            const courseId = document.getElementById('reportCourseSelect').value;
+            let reportData = attendance;
+            if (courseId) {
+                reportData = reportData.filter(record => record[1] === courseId);
+            }
+
+            if (type === 'csv') {
+                const csv = Papa.unparse(reportData);
+                const blob = new Blob([csv], { type: 'text/csv' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'attendance_report.csv';
+                a.click();
+            } else {
+                const doc = new jspdf.jsPDF();
+                doc.text('Attendance Report - Govt ITI Nagpur', 10, 10);
+                reportData.forEach((record, index) => {
+                    doc.text(record.join(', '), 10, 20 + (index * 10));
+                });
+                doc.save('attendance_report.pdf');
+            }
+        }
+    </script>
+</body>
+</html>
